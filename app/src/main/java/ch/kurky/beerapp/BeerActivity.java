@@ -34,7 +34,8 @@ import java.util.List;
 public class BeerActivity extends AppCompatActivity  {
 
     private ListTask listTask;
-    private ArrayAdapter<BaasDocument> adapter;
+    private AddTask addTask;
+    private ArrayAdapter<Beer> adapter;
     private ListView lvItem;
 
     @Override
@@ -51,10 +52,11 @@ public class BeerActivity extends AppCompatActivity  {
         lvItem.setOnItemClickListener(new android.widget.AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view,int position, long id) {
-                BaasDocument item = (BaasDocument) lvItem.getItemAtPosition(position);
+                Beer item = (Beer) lvItem.getItemAtPosition(position);
                 Intent returnIntent = new Intent();
-                returnIntent.putExtra("name",item.getString("name"));
-                returnIntent.putExtra("price",item.getDouble("price").toString());
+                addBeerToQueue(item);
+                returnIntent.putExtra("name",item.name);
+                returnIntent.putExtra("price",item.price);
                 setResult(RESULT_OK,returnIntent);
                 finish();
             }
@@ -81,16 +83,50 @@ public class BeerActivity extends AppCompatActivity  {
         listTask.execute();
     }
 
+    protected void addBeerToQueue(Beer beer) {
+        addTask = new AddTask();
+        addTask.execute(beer.name, String.valueOf(beer.price));
+    }
 
     protected void onListReceived(BaasResult<List<BaasDocument>> result) {
         try {
             List<BaasDocument> array = result.get();
             adapter.clear();
+            Beer beer = new Beer();
+            for (int i = 0; i < array.size(); i++) {
 
-            for (int i = 0; i < array.size(); i++)
-                adapter.add(array.get(i));
-
+                beer.name = array.get(i).getString("name");
+                beer.price = array.get(i).getDouble("price");
+                adapter.add(beer);
+            }
             adapter.notifyDataSetChanged();
+        } catch (BaasClientException e) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setCancelable(true);
+            builder.setTitle("Error");
+            builder.setMessage("Error: " + e);
+            builder.setNegativeButton("Cancel", null);
+            builder.create().show();
+        } catch (BaasServerException e) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setCancelable(true);
+            builder.setTitle("Error");
+            builder.setMessage("Error: " + e);
+            builder.setNegativeButton("Cancel", null);
+            builder.create().show();
+        } catch (BaasException e) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setCancelable(true);
+            builder.setTitle("Error");
+            builder.setMessage("Error: " + e);
+            builder.setNegativeButton("Cancel", null);
+            builder.create().show();
+        }
+    }
+
+    public void onPersonAdded(BaasResult<BaasDocument> result) {
+        try {
+            BaasDocument baas = result.get();
         } catch (BaasClientException e) {
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setCancelable(true);
@@ -133,10 +169,10 @@ public class BeerActivity extends AppCompatActivity  {
         }
     }
 
-    public class Adapter extends ArrayAdapter<BaasDocument> {
+    public class Adapter extends ArrayAdapter<Beer> {
 
         public Adapter(Context context) {
-            super(context, android.R.layout.simple_list_item_2,	new ArrayList<BaasDocument>());
+            super(context, android.R.layout.simple_list_item_2,	new ArrayList<Beer>());
         }
 
         public View getView(int position, View convertView, ViewGroup parent) {
@@ -155,9 +191,9 @@ public class BeerActivity extends AppCompatActivity  {
             }
 
             Tag tag = (Tag) view.getTag();
-            BaasDocument entry = getItem(position);
-            tag.text1.setText(entry.getString("name"));
-            tag.text2.setText(entry.getDouble("price").toString());
+            Beer entry = getItem(position);
+            tag.text1.setText(entry.name);
+            tag.text2.setText(Double.toString(entry.price));
 
             return view;
         }
@@ -169,6 +205,25 @@ public class BeerActivity extends AppCompatActivity  {
         public TextView text1;
         public TextView text2;
 
+    }
+
+    public class AddTask extends AsyncTask<String, Void, BaasResult<BaasDocument>> {
+
+        @Override
+        protected BaasResult<BaasDocument> doInBackground(String... params) {
+            BaasDocument person = new BaasDocument("queue");
+
+            person.put("name", params[0]);
+            person.put("price", params[1]);
+
+
+            return person.saveSync();
+        }
+
+        @Override
+        protected void onPostExecute(BaasResult<BaasDocument> result) {
+            onPersonAdded(result);
+        }
     }
 
 }

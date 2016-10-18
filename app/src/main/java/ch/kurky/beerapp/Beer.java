@@ -6,5 +6,5 @@ package ch.kurky.beerapp;
 
 public class Beer {
     public String name;
-    public String price;
+    public double price;
 }

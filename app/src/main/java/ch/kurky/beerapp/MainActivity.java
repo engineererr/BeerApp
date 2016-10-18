@@ -86,7 +86,7 @@ public class MainActivity extends AppCompatActivity {
         if (requestCode == 1) {
             if(resultCode == RESULT_OK){
                 String name = data.getStringExtra("name");
-                String price = data.getStringExtra("price");
+                Double price = data.getDoubleExtra("price", 0.0);
                 Beer beer = new Beer();
                 beer.name = name;
                 beer.price = price;
@@ -128,7 +128,7 @@ public class MainActivity extends AppCompatActivity {
             Beer beer = getItem(position);
             beer = getItem(position);
             tag.text1.setText(beer.name);
-            tag.text2.setText(beer.price);
+            tag.text2.setText(String.valueOf(beer.price));
 
             return view;
         }
