@@ -2,6 +2,7 @@ package ch.kurky.beerapp;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -38,6 +39,8 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
+    public static final String PREFS_NAME = "Settings";
+
     private ListView lvItem;
     private ArrayAdapter<BaasDocument> adapter;
     private ListTask listTask;
@@ -49,22 +52,49 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        lvItem = (ListView)this.findViewById(R.id.lvQueue);
+
         // Initialize BaasBox for the whole App
         BaasBox.Builder b = new BaasBox.Builder(this);
         b.setApiDomain("192.168.0.101").setAppCode("1234567890").setPort(9000).setAuthentication(BaasBox.Config.AuthType.SESSION_TOKEN);
         b.init();
 
 
-        if ( !BaasUser.current().isAuthentcated()) {
+        if (!BaasUser.current().isAuthentcated()) {
             Intent intent = new Intent(this, LoginActivity.class);
-            startActivity(intent);
+            startActivityForResult(intent, 1);
+        }else{
+            checkPaired();
         }
+    }
 
+    public void checkPaired(){
+        // check if beer coaster is paired
+        SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+
+        if(!settings.getBoolean("paired", false)){
+            Intent intent = new Intent(MainActivity.this, QrActivity.class);
+            startActivityForResult(intent, 2);
+        }else {
+            setupAdapter();
+        }
+    }
+
+    public void setupAdapter(){
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+        toolbar.setTitle("BeerApp - Coaster ID: " + settings.getString("coasterid", ""));
         setSupportActionBar(toolbar);
 
-
+        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+        fab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(MainActivity.this, BeerActivity.class);
+                startActivityForResult(intent, 3);
+            }
+        });
         lvItem = (ListView)this.findViewById(R.id.lvQueue);
         adapter = new Adapter(this);
         lvItem.setAdapter(adapter);
@@ -83,17 +113,6 @@ public class MainActivity extends AppCompatActivity {
                 }else{
                     delete(beer);
                 }
-
-
-            }
-        });
-
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(MainActivity.this, BeerActivity.class);
-                startActivityForResult(intent, 1);
             }
         });
         refresh();
@@ -123,6 +142,16 @@ public class MainActivity extends AppCompatActivity {
 
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == 1) {
+            checkPaired();
+        }else if (requestCode == 2) {
+            String qrdata = data.getStringExtra("qrdata");
+            SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
+            SharedPreferences.Editor editor = settings.edit();
+            editor.putBoolean("paired", true);
+            editor.putString("coasterid", qrdata);
+            editor.commit();
+            setupAdapter();
+        }else if (requestCode == 3) {
             if(resultCode == RESULT_OK){
                 BaasDocument beer = data.getParcelableExtra("item");
 
@@ -158,17 +187,17 @@ public class MainActivity extends AppCompatActivity {
 
             Tag tag = (Tag) view.getTag();
             BaasDocument beer = getItem(position);
-            if(beer.getBoolean("ordered")){
+
+            if (beer.getBoolean("ordered")) {
                 view.setBackgroundColor(getResources().getColor(R.color.colorAccent));
                 tag.text1.setTextColor(Color.WHITE);
                 tag.text2.setTextColor(Color.WHITE);
                 tag.text1.setText(beer.getString("name"));
                 tag.text2.setText("CHF " + beer.getString("price"));
-            }else{
+            } else {
                 tag.text1.setText(beer.getString("name"));
                 tag.text2.setText("CHF " + beer.getString("price"));
             }
-
 
             return view;
         }

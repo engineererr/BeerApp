@@ -63,6 +63,9 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void onUserLogged() {
+        Intent returnIntent = new Intent();
+        returnIntent.putExtra("login", true);
+        setResult(RESULT_OK,returnIntent);
         finish();
     }
 
