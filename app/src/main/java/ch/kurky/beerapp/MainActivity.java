@@ -1,5 +1,6 @@
 package ch.kurky.beerapp;
 
+import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -37,6 +38,10 @@ import com.baasbox.android.plugins.glide.GlidePlugin;
 import java.util.ArrayList;
 import java.util.List;
 
+import permissions.dispatcher.NeedsPermission;
+import permissions.dispatcher.RuntimePermissions;
+
+@RuntimePermissions
 public class MainActivity extends AppCompatActivity {
 
     public static final String PREFS_NAME = "Settings";
@@ -56,9 +61,8 @@ public class MainActivity extends AppCompatActivity {
 
         // Initialize BaasBox for the whole App
         BaasBox.Builder b = new BaasBox.Builder(this);
-        b.setApiDomain("192.168.0.101").setAppCode("1234567890").setPort(9000).setAuthentication(BaasBox.Config.AuthType.SESSION_TOKEN);
+        b.setApiDomain("149.126.1.186").setAppCode("1234567890").setPort(9000).setAuthentication(BaasBox.Config.AuthType.SESSION_TOKEN);
         b.init();
-
 
         if (!BaasUser.current().isAuthentcated()) {
             Intent intent = new Intent(this, LoginActivity.class);
@@ -73,11 +77,23 @@ public class MainActivity extends AppCompatActivity {
         SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
 
         if(!settings.getBoolean("paired", false)){
-            Intent intent = new Intent(MainActivity.this, QrActivity.class);
-            startActivityForResult(intent, 2);
+            MainActivityPermissionsDispatcher.startQrActivityWithCheck(this);
         }else {
             setupAdapter();
         }
+    }
+
+    @NeedsPermission(Manifest.permission.CAMERA)
+    public void startQrActivity(){
+        Intent intent = new Intent(MainActivity.this, QrActivity.class);
+        startActivityForResult(intent, 2);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        // NOTE: delegate the permission handling to generated method
+        MainActivityPermissionsDispatcher.onRequestPermissionsResult(this, requestCode, grantResults);
     }
 
     public void setupAdapter(){
